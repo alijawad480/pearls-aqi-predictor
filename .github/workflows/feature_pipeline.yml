@@ -8,6 +8,8 @@ on:
 jobs:
   run-feature-pipeline:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
@@ -23,7 +25,14 @@ jobs:
       - name: Run the feature pipeline
         env:
           OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
-          HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
         run: |
           cd src
           python feature_pipeline.py
+
+      - name: Commit updated data back to the repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/aqi_history.csv
+          git diff --quiet --cached || git commit -m "Update AQI data $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push

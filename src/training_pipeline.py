@@ -1,29 +1,16 @@
-"""
-Training Pipeline for Pearls AQI Predictor
-
-What this script does:
-1. Loads the historical AQI data (data/aqi_history.csv)
-2. Aggregates hourly readings into one AQI value per city per day
-3. Builds lag features (AQI on each of the past 7 days) for every city/day
-4. Trains a separate model for each forecast horizon (1 day ahead, 2 days ahead,
-   ... up to 7 days ahead), tries three model types per horizon (Ridge Regression,
-   Random Forest, and a small neural network), and keeps whichever performs best
-5. Saves the winning models into models/, which acts as our model registry
-   (versioned through Git, same pattern as our CSV feature store)
-
-Run this manually with: python training_pipeline.py
-Re-run it any time there's new data (e.g. after the hourly pipeline has run for
-a while) to retrain with a bigger, more accurate dataset.
-"""
-
 import os
 import json
 import joblib
 import numpy as np
 import pandas as pd
+import shap
+import matplotlib
+matplotlib.use("Agg")  # no display needed, we just save the plot to a file
+import matplotlib.pyplot as plt
 from sklearn.linear_model import Ridge
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.neural_network import MLPRegressor
+from xgboost import XGBRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
@@ -61,11 +48,6 @@ def load_daily_data():
 
 
 def build_supervised_dataset(daily):
-    """
-    Turn the daily time series into a supervised learning table: for each city and
-    day, the input columns are the AQI from the past LOOKBACK_DAYS days, and there's
-    one target column per forecast horizon (aqi_target_day_1 ... aqi_target_day_7).
-    """
 
     rows = []
 
@@ -103,6 +85,7 @@ def train_and_evaluate(X_train, y_train, X_test, y_test):
         "ridge": Ridge(alpha=1.0),
         "random_forest": RandomForestRegressor(n_estimators=200, max_depth=6, random_state=42),
         "neural_net": MLPRegressor(hidden_layer_sizes=(32, 16), max_iter=2000, random_state=42),
+        "xgboost": XGBRegressor(n_estimators=200, max_depth=4, learning_rate=0.05, random_state=42),
     }
 
     results = {}
@@ -149,6 +132,8 @@ def main():
     X_test_all = scaler.transform(test_df[feature_cols])
 
     summary = []
+    day_1_model = None
+    day_1_model_name = None
 
     for horizon in range(1, FORECAST_HORIZON_DAYS + 1):
         target_col = f"aqi_target_day_{horizon}"
@@ -164,6 +149,10 @@ def main():
         model_path = os.path.join(MODELS_DIR, f"day_{horizon}_model.joblib")
         joblib.dump(best["model"], model_path)
 
+        if horizon == 1:
+            day_1_model = best["model"]
+            day_1_model_name = best_name
+
         summary.append({
             "horizon_days": horizon,
             "best_model": best_name,
@@ -171,6 +160,31 @@ def main():
             "mae": round(best["mae"], 3),
             "r2": round(best["r2"], 3),
         })
+
+    # SHAP explainability for the day-1 model (most immediately useful forecast)
+    print("\nComputing SHAP feature importance for the day-1 model...")
+    try:
+        X_train_df = pd.DataFrame(X_train_all, columns=feature_cols)
+        explainer = shap.Explainer(day_1_model.predict, X_train_df)
+        shap_values = explainer(X_train_df)
+
+        mean_abs_shap = np.abs(shap_values.values).mean(axis=0)
+        importance = sorted(
+            zip(feature_cols, mean_abs_shap.tolist()),
+            key=lambda pair: pair[1],
+            reverse=True,
+        )
+        with open(os.path.join(MODELS_DIR, "shap_importance.json"), "w") as f:
+            json.dump({"model_used": day_1_model_name, "importance": importance}, f, indent=2)
+
+        plt.figure()
+        shap.summary_plot(shap_values, X_train_df, show=False, plot_type="bar")
+        plt.tight_layout()
+        plt.savefig(os.path.join(MODELS_DIR, "shap_summary.png"), dpi=120)
+        plt.close()
+        print("  SHAP importance saved to models/shap_importance.json and shap_summary.png")
+    except Exception as e:
+        print(f"  Could not compute SHAP values: {e}")
 
     # save the scaler and feature column order so the dashboard can reuse them exactly
     joblib.dump(scaler, os.path.join(MODELS_DIR, "scaler.joblib"))

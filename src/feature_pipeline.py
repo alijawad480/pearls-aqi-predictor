@@ -1,22 +1,3 @@
-"""
-Feature Pipeline for Pearls AQI Predictor
-
-What this script does:
-1. Fetches current weather + pollution data for each city from OpenWeather
-2. Calculates the real AQI from PM2.5, plus some extra features
-3. Appends everything to data/aqi_history.csv, which acts as our feature store
-
-Note: we originally planned to use Hopsworks as the feature store, but hit a
-persistent, unfixable bug in Hopsworks' offline write path (confirmed to fail
-identically across Windows, Linux, home wifi, mobile data, and even GitHub's
-own cloud servers -- ruling out any issue on our end). A CSV file committed
-back to this repo is a simple, reliable substitute that still satisfies the
-"feature store" role: a growing, versioned historical dataset.
-
-Run this manually with: python feature_pipeline.py
-GitHub Actions runs it automatically every hour and commits the updated CSV.
-"""
-
 import os
 import requests
 import pandas as pd
@@ -30,6 +11,7 @@ load_dotenv()
 
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
+# Path to our CSV-based feature store, relative to this script's location
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 DATA_FILE = os.path.join(DATA_DIR, "aqi_history.csv")
 
@@ -41,11 +23,27 @@ def fetch_pollution_data(lat, lon):
     params = {"lat": lat, "lon": lon, "appid": OPENWEATHER_API_KEY}
 
     response = requests.get(url, params=params)
+    response.raise_for_status()  # crashes loudly if the API call fails, so we notice
+    return response.json()
+
+
+def fetch_weather_data(lat, lon):
+    """Call OpenWeather's current weather endpoint (temp, humidity, wind) for one city.
+
+    Note: this only gives us weather going forward, not historical weather -- OpenWeather's
+    free tier doesn't include historical weather, only historical pollution. So weather
+    features will only be usable in training once enough new data accumulates.
+    """
+
+    url = "http://api.openweathermap.org/data/2.5/weather"
+    params = {"lat": lat, "lon": lon, "appid": OPENWEATHER_API_KEY, "units": "metric"}
+
+    response = requests.get(url, params=params)
     response.raise_for_status()
     return response.json()
 
 
-def build_feature_row(city_name, raw_data):
+def build_feature_row(city_name, raw_data, weather_data=None):
     """Turn the raw API response into one clean row of features for a single city."""
 
     components = raw_data["list"][0]["components"]
@@ -61,8 +59,9 @@ def build_feature_row(city_name, raw_data):
         "hour": now.hour,
         "day": now.day,
         "month": now.month,
-        "weekday": now.weekday(),
+        "weekday": now.weekday(),  # 0 = Monday, 6 = Sunday
 
+        # raw pollutant readings
         "pm2_5": pm25,
         "pm10": components["pm10"],
         "co": components["co"],
@@ -70,13 +69,26 @@ def build_feature_row(city_name, raw_data):
         "o3": components["o3"],
         "so2": components["so2"],
 
+        # calculated target
         "aqi": aqi,
     }
+
+    # weather features, when available wind especially affects how pollutants disperse
+    if weather_data is not None:
+        row["temperature"] = weather_data["main"]["temp"]
+        row["humidity"] = weather_data["main"]["humidity"]
+        row["wind_speed"] = weather_data["wind"]["speed"]
+        row["wind_deg"] = weather_data["wind"].get("deg", 0)
+    else:
+        row["temperature"] = None
+        row["humidity"] = None
+        row["wind_speed"] = None
+        row["wind_deg"] = None
+
     return row
 
 
 def add_change_rate(df):
-    """Add a column showing how much AQI moved since the previous row, per city."""
 
     df = df.sort_values(["city", "timestamp"])
     df["aqi_change_rate"] = df.groupby("city")["aqi"].diff().fillna(0)
@@ -84,7 +96,6 @@ def add_change_rate(df):
 
 
 def save_to_csv(new_rows_df):
-    """Append the new rows to our CSV feature store, creating it if it doesn't exist yet."""
 
     os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -94,6 +105,7 @@ def save_to_csv(new_rows_df):
     else:
         combined_df = new_rows_df
 
+    # recalculate change rate across the full history
     combined_df = add_change_rate(combined_df)
 
     combined_df.to_csv(DATA_FILE, index=False)
@@ -107,7 +119,11 @@ def main():
     for city_name, coords in CITIES.items():
         try:
             raw_data = fetch_pollution_data(coords["lat"], coords["lon"])
-            row = build_feature_row(city_name, raw_data)
+            try:
+                weather_data = fetch_weather_data(coords["lat"], coords["lon"])
+            except Exception:
+                weather_data = None  # don't let a weather API hiccup break the pollution data
+            row = build_feature_row(city_name, raw_data, weather_data)
             all_rows.append(row)
             print(f"  {city_name}: AQI = {row['aqi']}")
         except Exception as e:

@@ -1,5 +1,11 @@
 requests
 pandas
 python-dotenv
-scikit-learn 
+scikit-learn
 joblib
+streamlit
+plotly
+xgboost
+shap
+matplotlib
+ 

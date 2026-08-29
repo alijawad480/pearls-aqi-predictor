@@ -1,0 +1,51 @@
+[
+  {
+    "horizon_days": 1,
+    "best_model": "ridge",
+    "rmse": 15.186,
+    "mae": 12.615,
+    "r2": 0.716
+  },
+  {
+    "horizon_days": 2,
+    "best_model": "random_forest",
+    "rmse": 13.112,
+    "mae": 11.365,
+    "r2": 0.78
+  },
+  {
+    "horizon_days": 3,
+    "best_model": "random_forest",
+    "rmse": 18.517,
+    "mae": 14.168,
+    "r2": 0.602
+  },
+  {
+    "horizon_days": 4,
+    "best_model": "neural_net",
+    "rmse": 21.134,
+    "mae": 17.651,
+    "r2": 0.484
+  },
+  {
+    "horizon_days": 5,
+    "best_model": "neural_net",
+    "rmse": 25.093,
+    "mae": 19.307,
+    "r2": 0.276
+  },
+  {
+    "horizon_days": 6,
+    "best_model": "neural_net",
+    "rmse": 22.122,
+    "mae": 18.209,
+    "r2": 0.462
+  },
+  {
+    "horizon_days": 7,
+    "best_model": "ridge",
+    "rmse": 19.106,
+    "mae": 16.036,
+    "r2": 0.627
+  }
+]

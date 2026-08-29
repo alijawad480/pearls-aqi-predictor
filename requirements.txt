@@ -1,4 +1,6 @@
 requests
 pandas
 python-dotenv
-hopsworks
+hopsworks==5.0.*
+pyarrow
+deltalake

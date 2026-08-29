@@ -6,7 +6,7 @@ What this script does:
 2. Calculates the real AQI from PM2.5, plus some extra features
 3. Pushes everything to the Hopsworks Feature Store
 
-Run this manually for now with: python src/feature_pipeline.py
+Run this manually for now with: python feature_pipeline.py
 Later, GitHub Actions will run this automatically every hour.
 """
 
@@ -53,9 +53,8 @@ def build_feature_row(city_name, raw_data):
         "hour": now.hour,
         "day": now.day,
         "month": now.month,
-        "weekday": now.weekday(),  # 0 = Monday, 6 = Sunday
+        "weekday": now.weekday(),
 
-        # raw pollutant readings
         "pm2_5": pm25,
         "pm10": components["pm10"],
         "co": components["co"],
@@ -63,7 +62,6 @@ def build_feature_row(city_name, raw_data):
         "o3": components["o3"],
         "so2": components["so2"],
 
-        # calculated target
         "aqi": aqi,
     }
     return row
@@ -80,7 +78,7 @@ def add_change_rate(df):
 def save_to_hopsworks(df):
     """Connect to Hopsworks and insert the features into (or create) the feature group."""
 
-    project = hopsworks.login(api_key_value=HOPSWORKS_API_KEY)
+    project = hopsworks.login(host="eu-west.cloud.hopsworks.ai", api_key_value=HOPSWORKS_API_KEY)
     feature_store = project.get_feature_store()
 
     feature_group = feature_store.get_or_create_feature_group(
@@ -89,9 +87,10 @@ def save_to_hopsworks(df):
         description="Hourly AQI features per city for Pearls AQI Predictor",
         primary_key=["city", "timestamp"],
         event_time="timestamp",
+        online_enabled=True,
     )
 
-    feature_group.insert(df)
+    feature_group.insert(df, write_options={"start_offline_materialization": False})
     print(f"Saved {len(df)} rows to Hopsworks feature group 'aqi_features'.")
 
 

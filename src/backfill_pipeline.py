@@ -1,15 +1,3 @@
-"""
-Historical Backfill for Pearls AQI Predictor
-
-Fetches real historical AQI data for the past N days (default 30) for all 8 cities
-using OpenWeather's Air Pollution History API, and merges it into data/aqi_history.csv.
-This gives us enough historical data to actually train a model, instead of waiting
-hour by hour for the live pipeline to build up data naturally.
-
-Run this manually, once, with: python backfill_pipeline.py
-Pass a different number of days like: python backfill_pipeline.py 60
-"""
-
 import os
 import sys
 import time

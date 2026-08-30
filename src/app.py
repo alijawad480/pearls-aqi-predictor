@@ -162,7 +162,7 @@ def category_pill_html(category, color_key):
     return f'<span class="category-pill" style="background:{color}22; color:{color}; border:1px solid {color}55;">{category}</span>'
 
 
-# ---------------- Header ----------------
+#  Header
 last_refresh = datetime.utcnow().strftime("%b %d, %Y  %H:%M UTC")
 header_col1, header_col2 = st.columns([3, 1])
 with header_col1:
@@ -199,7 +199,7 @@ gauge_color = CATEGORY_COLORS.get(color_key, "#8B96A5")
 prev_aqi = city_daily["aqi"].iloc[-2] if len(city_daily) > 1 else latest_aqi
 change_24h = latest_aqi - prev_aqi
 
-# ---------------- Current conditions: gauge + side cards ----------------
+# Current conditions: gauge + side cards
 gauge_col, side_col = st.columns([2, 1])
 
 with gauge_col:
@@ -209,7 +209,8 @@ with gauge_col:
     gauge_fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=latest_aqi,
-        number=dict(font=dict(size=42, color="#F0F3F5", family="Poppins")),
+        domain=dict(x=[0, 1], y=[0, 1]),
+        number=dict(font=dict(size=42, color="#F0F3F5", family="Poppins"), valueformat=".0f"),
         gauge=dict(
             axis=dict(range=[0, 300], tickcolor="#8B96A5", tickfont=dict(color="#8B96A5", size=10)),
             bar=dict(color=gauge_color, thickness=0.28),
@@ -224,7 +225,7 @@ with gauge_col:
             ],
         ),
     ))
-    gauge_fig.update_layout(height=260, margin=dict(l=20, r=20, t=10, b=10), paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Poppins"))
+    gauge_fig.update_layout(height=300, margin=dict(l=30, r=30, t=55, b=10), paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Poppins"))
     st.plotly_chart(gauge_fig, use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -245,7 +246,7 @@ with side_col:
     </div>
     """, unsafe_allow_html=True)
 
-# ---------------- Pollutant grid ----------------
+# Pollutant grid
 if not city_raw.empty:
     latest_row = city_raw.iloc[-1]
     pollutants = [
@@ -271,7 +272,7 @@ if not city_raw.empty:
             """, unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# ---------------- 24-hour trend ----------------
+# 24-hour trend 
 st.markdown('<div class="glass">', unsafe_allow_html=True)
 st.markdown('<div class="metric-label" style="margin-bottom:10px;">24-Hour AQI Trend</div>', unsafe_allow_html=True)
 last_24h = city_raw.tail(24)
@@ -293,7 +294,7 @@ else:
     st.caption("Not enough hourly data yet.")
 st.markdown('</div>', unsafe_allow_html=True)
 
-# ---------------- Forecast ----------------
+# Forecast 
 input_row = build_input_row(city, daily_df, feature_cols)
 
 if input_row is not None:
@@ -352,7 +353,7 @@ if input_row is not None:
 else:
     st.info("Not enough historical data yet to generate a 7-day forecast for this city.")
 
-# ---------------- Explainability ----------------
+# Explainability
 st.markdown('<div class="glass">', unsafe_allow_html=True)
 st.markdown('<div class="metric-label" style="margin-bottom:6px;">Explainability</div>', unsafe_allow_html=True)
 shap_path = os.path.join(MODELS_DIR, "shap_importance.json")
@@ -383,13 +384,13 @@ else:
     st.caption("SHAP explainability data not yet available -- run the training pipeline to generate it.")
 st.markdown('</div>', unsafe_allow_html=True)
 
-# ---------------- Model performance ----------------
+# Model performance
 with st.expander("Model performance details"):
     if summary:
         st.dataframe(pd.DataFrame(summary), use_container_width=True)
     st.caption("Models are retrained daily as more historical data accumulates via GitHub Actions.")
 
-# ---------------- National map ----------------
+# National map
 st.markdown('<div class="glass">', unsafe_allow_html=True)
 st.markdown('<div class="metric-label" style="margin-bottom:10px;">National Overview</div>', unsafe_allow_html=True)
 
@@ -429,7 +430,8 @@ if not latest_per_city.empty:
     st.plotly_chart(map_fig, use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
-# ---------------- EDA ----------------
+# EDA
+
 st.markdown('<div class="glass">', unsafe_allow_html=True)
 st.markdown('<div class="metric-label" style="margin-bottom:10px;">Exploratory Data Analysis</div>', unsafe_allow_html=True)
 

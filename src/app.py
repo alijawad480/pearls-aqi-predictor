@@ -85,6 +85,14 @@ def load_daily_data():
     return daily.sort_values(["city", "date"])
 
 
+@st.cache_data(ttl=3600)
+def load_raw_data():
+    """Load the full hourly CSV, unaggregated -- used for EDA (correlations, patterns)."""
+
+    df = pd.read_csv(DATA_FILE, parse_dates=["timestamp"])
+    return df
+
+
 @st.cache_resource
 def load_models():
     """Load the 7 trained models, the scaler, and the feature column order."""
@@ -241,7 +249,7 @@ if not latest_per_city.empty:
 
     map_fig.update_geos(
         center=dict(lat=30.3753, lon=69.3451),
-        projection_scale=10,
+        projection_scale=9,
         showcountries=True, countrycolor="#90A4AE",
         showland=True, landcolor="#F4F6F5",
         showocean=True, oceancolor="#E3EDEA",
@@ -370,6 +378,59 @@ else:
             st.bar_chart(importance_df.set_index("feature").head(10))
         else:
             st.caption("SHAP explainability data not yet available -- run the training pipeline to generate it.")
+
+st.divider()
+st.subheader("Exploratory Data Analysis")
+
+raw_df = load_raw_data()
+
+eda_tab1, eda_tab2, eda_tab3 = st.tabs(["Pollutant Correlations", "Time Patterns", "City Comparison"])
+
+with eda_tab1:
+    st.caption("How strongly each pollutant relates to overall AQI and to each other")
+    corr_cols = ["aqi", "pm2_5", "pm10", "co", "no2", "o3", "so2"]
+    available_cols = [c for c in corr_cols if c in raw_df.columns]
+    corr_matrix = raw_df[available_cols].corr()
+
+    heatmap_fig = go.Figure(data=go.Heatmap(
+        z=corr_matrix.values,
+        x=corr_matrix.columns,
+        y=corr_matrix.columns,
+        colorscale=[[0, "#ECEFF1"], [0.5, "#81C784"], [1, "#1B5E20"]],
+        text=corr_matrix.round(2).values,
+        texttemplate="%{text}",
+        textfont=dict(size=11),
+    ))
+    heatmap_fig.update_layout(height=420, paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Poppins", color="#37474F"))
+    st.plotly_chart(heatmap_fig, use_container_width=True)
+
+with eda_tab2:
+    col_a, col_b = st.columns(2)
+
+    with col_a:
+        st.caption("Average AQI by hour of day")
+        hourly_pattern = raw_df.groupby("hour")["aqi"].mean().reset_index()
+        hour_fig = go.Figure(data=[go.Scatter(x=hourly_pattern["hour"], y=hourly_pattern["aqi"], mode="lines+markers", line=dict(color="#2E7D32", width=3))])
+        hour_fig.update_layout(xaxis_title="Hour (UTC)", yaxis_title="Avg AQI", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Poppins", color="#37474F"))
+        st.plotly_chart(hour_fig, use_container_width=True)
+
+    with col_b:
+        st.caption("Average AQI by day of week")
+        weekday_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        weekday_pattern = raw_df.groupby("weekday")["aqi"].mean().reindex(range(7)).reset_index()
+        weekday_pattern["weekday_name"] = weekday_names
+        weekday_fig = go.Figure(data=[go.Bar(x=weekday_pattern["weekday_name"], y=weekday_pattern["aqi"], marker_color="#66BB6A")])
+        weekday_fig.update_layout(yaxis_title="Avg AQI", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Poppins", color="#37474F"))
+        st.plotly_chart(weekday_fig, use_container_width=True)
+
+with eda_tab3:
+    st.caption("AQI distribution across all cities (box plot shows spread, median, and outliers)")
+    box_fig = go.Figure()
+    for c in CITIES.keys():
+        city_values = raw_df[raw_df["city"] == c]["aqi"]
+        box_fig.add_trace(go.Box(y=city_values, name=c, marker_color="#2E7D32"))
+    box_fig.update_layout(yaxis_title="AQI", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Poppins", color="#37474F"), showlegend=False)
+    st.plotly_chart(box_fig, use_container_width=True)
 
 st.divider()
 st.caption("Pearls AQI Predictor — internship project. Data source: OpenWeather Air Pollution API.")

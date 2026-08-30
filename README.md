@@ -6,7 +6,7 @@ An end-to-end machine learning system that forecasts Air Quality Index (AQI) up
 to 7 days ahead for 8 major Pakistani cities: Lahore, Faisalabad, Karachi,
 Islamabad, Multan, Peshawar, Rawalpindi, and Gujranwala.
 
-**Live dashboard:** [add your Streamlit Cloud link here after deploying]
+**Live dashboard:** https://shineaqipredictor.streamlit.app/
 **Repository:** https://github.com/alijawad480/pearls-aqi-predictor
 
 ## Architecture
@@ -113,6 +113,18 @@ SHAP (SHapley Additive exPlanations) values are computed for the day-1
 forecast model, showing which features (which lag days, which time-of-year
 signals) most influence each prediction. Available in the dashboard under
 "Why the model predicts this."
+
+## Exploratory Data Analysis
+
+Available live in the dashboard under "Exploratory Data Analysis":
+
+- **Pollutant correlation heatmap** — shows how strongly PM2.5, PM10, CO, NO2,
+  O3, and SO2 relate to overall AQI and to each other (PM2.5 is expected to
+  correlate most strongly, since it directly drives the AQI calculation)
+- **Time patterns** — average AQI by hour of day and by day of week, useful
+  for spotting traffic-related or weekly cyclical pollution patterns
+- **City comparison** — box plots showing the AQI distribution (median,
+  spread, outliers) for each of the 8 cities side by side
 
 ## Dashboard features
 

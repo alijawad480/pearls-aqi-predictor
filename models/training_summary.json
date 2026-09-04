@@ -2,50 +2,50 @@
   {
     "horizon_days": 1,
     "best_model": "random_forest",
-    "rmse": 21.297,
-    "mae": 16.401,
-    "r2": 0.526
+    "rmse": 21.284,
+    "mae": 17.043,
+    "r2": 0.599
   },
   {
     "horizon_days": 2,
     "best_model": "ridge",
-    "rmse": 23.247,
-    "mae": 18.511,
-    "r2": 0.461
+    "rmse": 19.863,
+    "mae": 16.395,
+    "r2": 0.685
   },
   {
     "horizon_days": 3,
     "best_model": "ridge",
-    "rmse": 20.799,
-    "mae": 17.552,
-    "r2": 0.618
+    "rmse": 19.492,
+    "mae": 16.789,
+    "r2": 0.726
   },
   {
     "horizon_days": 4,
     "best_model": "ridge",
-    "rmse": 17.686,
-    "mae": 15.091,
-    "r2": 0.758
+    "rmse": 15.504,
+    "mae": 13.289,
+    "r2": 0.834
   },
   {
     "horizon_days": 5,
     "best_model": "ridge",
-    "rmse": 15.208,
-    "mae": 12.689,
-    "r2": 0.832
+    "rmse": 14.593,
+    "mae": 11.779,
+    "r2": 0.853
   },
   {
     "horizon_days": 6,
     "best_model": "ridge",
-    "rmse": 15.766,
-    "mae": 13.227,
-    "r2": 0.82
+    "rmse": 17.131,
+    "mae": 14.266,
+    "r2": 0.799
   },
   {
     "horizon_days": 7,
-    "best_model": "ridge",
-    "rmse": 17.841,
-    "mae": 14.436,
-    "r2": 0.771
+    "best_model": "xgboost",
+    "rmse": 17.375,
+    "mae": 13.488,
+    "r2": 0.799
   }
 ]
